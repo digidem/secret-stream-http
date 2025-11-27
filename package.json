@@ -1,0 +1,88 @@
+{
+	"name": "secret-stream-http",
+	"version": "1.0.0",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./src/index.js"
+		},
+		"./fetch.js": {
+			"types": "./dist/fetch.d.ts",
+			"default": "./src/fetch.js"
+		},
+		"./agent.js": {
+			"types": "./dist/agent.d.ts",
+			"default": "./src/agent.js"
+		},
+		"./server.js": {
+			"types": "./dist/server.d.ts",
+			"default": "./src/server.js"
+		}
+	},
+	"scripts": {
+		"test": "node --test",
+		"format": "prettier --write .",
+		"lint": "eslint",
+		"prepare": "husky",
+		"prepack": "tsc -p tsconfig.npm.json"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"description": "An HTTP client and server built on top of [@hyperswarm/secret-stream](https://github.com/holepunchto/hyperswarm-secret-stream) for end-to-end encrypted HTTP communication over TCP.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/digidem/secret-stream-http.git"
+	},
+	"bugs": {
+		"url": "https://github.com/digidem/secret-stream-http/issues"
+	},
+	"homepage": "https://github.com/digidem/secret-stream-http#readme",
+	"files": [
+		"dist/",
+		"src/"
+	],
+	"dependencies": {
+		"@hyperswarm/secret-stream": "^6.8.1",
+		"streamx": "^2.22.1",
+		"undici": "^6.21.3"
+	},
+	"devDependencies": {
+		"@digidem/types": "^2.3.0",
+		"@eslint/js": "^9.39.1",
+		"@trivago/prettier-plugin-sort-imports": "^6.0.0",
+		"@tsconfig/node18": "^18.2.6",
+		"@types/node": "^22.18.0",
+		"@types/streamx": "^2.9.5",
+		"@whatwg-node/server": "^0.10.17",
+		"eslint": "^9.39.1",
+		"globals": "^16.5.0",
+		"husky": "^9.1.7",
+		"itty-router": "^5.0.22",
+		"lint-staged": "^16.2.7",
+		"prettier": "^3.7.1",
+		"typescript": "^5.9.2"
+	},
+	"prettier": {
+		"semi": false,
+		"singleQuote": true,
+		"useTabs": true,
+		"importOrderSeparation": true,
+		"importOrder": [
+			"^node:",
+			"^@?\\w",
+			"^[./]"
+		],
+		"plugins": [
+			"@trivago/prettier-plugin-sort-imports"
+		]
+	},
+	"lint-staged": {
+		"*.js": "eslint --cache --fix",
+		"*.{js,css,md}": "prettier --write"
+	},
+	"directories": {
+		"test": "test"
+	}
+}

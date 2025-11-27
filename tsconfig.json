@@ -1,0 +1,22 @@
+{
+	"extends": "@tsconfig/node18/tsconfig.json",
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true,
+
+		"strict": true,
+		"noImplicitOverride": true,
+		"forceConsistentCasingInFileNames": true,
+
+		"skipLibCheck": true,
+		"typeRoots": ["types", "node_modules/@types"],
+		"paths": {
+			"@hyperswarm/secret-stream": [
+				"./node_modules/@digidem/types/vendor/@hyperswarm/secret-stream/index.d.ts"
+			]
+		}
+	},
+	"include": ["**/*"],
+	"exclude": ["node_modules", "dist"]
+}
