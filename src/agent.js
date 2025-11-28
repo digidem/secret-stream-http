@@ -52,7 +52,8 @@ export class Agent extends UndiciAgent {
 	}
 
 	/** @type {import('undici').buildConnector.connector} */
-	#connect({ hostname, port }, callback) {
+	#connect({ hostname, port }, cb) {
+		const callback = callbackOnce(cb)
 		const socket = connect({ host: hostname, port: port ? +port : 80 }, () => {
 			const secretStream = new SecretStream(true, socket, {
 				keyPair: this.#keyPair,
@@ -61,13 +62,14 @@ export class Agent extends UndiciAgent {
 
 			/** @param {Error} err */
 			const onError = (err) => {
-				console.error(err)
 				secretStream.removeListener('open', onOpen)
 				callback(err, null)
 			}
 
 			const onOpen = () => {
 				secretStream.removeListener('error', onError)
+				socket.removeListener('error', onError)
+				secretSocket.removeListener('error', onError)
 				if (!secretStream.remotePublicKey) {
 					secretStream.destroy()
 					callback(new Error('Remote public key is missing'), null)
@@ -87,7 +89,24 @@ export class Agent extends UndiciAgent {
 			}
 
 			secretStream.once('error', onError)
+			socket.once('error', onError)
+			secretSocket.on('error', onError)
 			secretStream.once('open', onOpen)
 		})
+	}
+}
+
+/**
+ * @template {(...args: any[]) => void} T
+ * @param {T} callback
+ * @returns {T} A wrapped version of the callback that only allows a single call
+ */
+function callbackOnce(callback) {
+	let called = false
+	// @ts-expect-error
+	return function (...args) {
+		if (called) return
+		called = true
+		callback(...args)
 	}
 }

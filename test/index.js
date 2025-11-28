@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { once } from 'node:events'
+import { createServer as createTcpServer } from 'node:net'
 import test from 'node:test'
 
 import { fetch, setGlobalDispatcher, Agent } from 'secret-stream-http'
@@ -197,4 +199,18 @@ test('can set a custom global dispatcher with a custom keyPair', async (t) => {
 		true,
 		"Client public key should match the custom keyPair's public key",
 	)
+})
+
+test('throws on disconnect during handshake', async () => {
+	const server = createTcpServer((socket) => {
+		socket.destroy()
+	})
+	const port = await listen(server)
+
+	await assert.rejects(async () => {
+		await fetch(`http://127.0.0.1:${port}/`)
+	}, 'Should reject connection to non-secret-stream server')
+
+	server.close()
+	await once(server, 'close')
 })
