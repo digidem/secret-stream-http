@@ -5,6 +5,8 @@ import { Duplex as StreamxDuplex } from 'streamx'
 
 import { StreamxAsNodeDuplex } from '../src/streamx-as-node-duplex.js'
 
+const isNode18 = process.versions.node.startsWith('18.')
+
 test('basic duplex functionality - read and write', async () => {
 	const streamx = new StreamxDuplex({
 		read(cb) {
@@ -987,7 +989,8 @@ test('allowHalfOpen: false with autoDestroy', async () => {
 	})
 })
 
-test('destroy during corked writes', async () => {
+// Not supported in Node.js 18
+test('destroy during corked writes', { skip: isNode18 }, async () => {
 	const streamx = new StreamxDuplex({
 		read(cb) {
 			cb()

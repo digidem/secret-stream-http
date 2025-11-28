@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { fetch, setGlobalDispatcher } from 'secret-stream-http'
+import { fetch, setGlobalDispatcher, Agent } from 'secret-stream-http'
 
-import { Agent } from '../src/agent.js'
 import { createTestServer, listen } from './helpers.js'
 
 test('can fetch from a secret-stream server', async (t) => {
@@ -13,7 +12,7 @@ test('can fetch from a secret-stream server', async (t) => {
 
 	const port = await listen(server)
 
-	const response = await fetch(`http://localhost:${port}/hello`)
+	const response = await fetch(`http://127.0.0.1:${port}/hello`)
 	assert.equal(response.status, 200)
 	assert.equal(await response.text(), 'Hello, World!')
 })
@@ -28,7 +27,7 @@ test('sequential fetches work correctly', async (t) => {
 	const port = await listen(server)
 
 	while (++responseCount <= 3) {
-		const response = await fetch(`http://localhost:${port}/count`)
+		const response = await fetch(`http://127.0.0.1:${port}/count`)
 		assert.equal(response.status, 200)
 		assert.equal(await response.text(), `Request ${responseCount}`)
 	}
@@ -53,11 +52,11 @@ test('parallel fetches work correctly', async (t) => {
 	const port = await listen(server)
 
 	const results = await Promise.all([
-		fetch(`http://localhost:${port}/parallel?id=1`),
-		fetch(`http://localhost:${port}/parallel?id=2`),
-		fetch(`http://localhost:${port}/parallel?id=3`),
-		fetch(`http://localhost:${port}/parallel?id=4`),
-		fetch(`http://localhost:${port}/parallel?id=5`),
+		fetch(`http://127.0.0.1:${port}/parallel?id=1`),
+		fetch(`http://127.0.0.1:${port}/parallel?id=2`),
+		fetch(`http://127.0.0.1:${port}/parallel?id=3`),
+		fetch(`http://127.0.0.1:${port}/parallel?id=4`),
+		fetch(`http://127.0.0.1:${port}/parallel?id=5`),
 	])
 
 	assert.equal(results.length, 5)
@@ -85,7 +84,7 @@ test('keypair consistency - client uses same keypair across requests (default gl
 	const port = await listen(server)
 
 	for (let i = 0; i < 100; i++) {
-		await fetch(`http://localhost:${port}/pubkey`)
+		await fetch(`http://127.0.0.1:${port}/pubkey`)
 	}
 
 	// All requests should use the same client keypair
@@ -120,8 +119,8 @@ test('can pass a custom agent per-fetch with custom keyPair', async (t) => {
 
 	const port = await listen(server)
 
-	await fetch(`http://localhost:${port}/pubkey`, { dispatcher: agent1 })
-	await fetch(`http://localhost:${port}/pubkey`, { dispatcher: agent2 })
+	await fetch(`http://127.0.0.1:${port}/pubkey`, { dispatcher: agent1 })
+	await fetch(`http://127.0.0.1:${port}/pubkey`, { dispatcher: agent2 })
 
 	assert.deepEqual(
 		clientPublicKeys,
@@ -146,7 +145,7 @@ test('can pass a remotePublicKey to the agent to verify server identity', async 
 		remotePublicKey: server.publicKey,
 	})
 
-	const response = await fetch(`http://localhost:${port1}/identity`, {
+	const response = await fetch(`http://127.0.0.1:${port1}/identity`, {
 		dispatcher: agent,
 	})
 	assert.equal(response.status, 200)
@@ -154,7 +153,7 @@ test('can pass a remotePublicKey to the agent to verify server identity', async 
 	// Now try to connect to the other server with a different public key
 	await assert.rejects(
 		async () => {
-			await fetch(`http://localhost:${port2}/identity`, {
+			await fetch(`http://127.0.0.1:${port2}/identity`, {
 				dispatcher: agent,
 			})
 		},
@@ -185,7 +184,7 @@ test('can set a custom global dispatcher with a custom keyPair', async (t) => {
 
 	const port = await listen(server)
 	for (let i = 0; i < 10; i++) {
-		await fetch(`http://localhost:${port}/pubkey`)
+		await fetch(`http://127.0.0.1:${port}/pubkey`)
 	}
 
 	assert.equal(
