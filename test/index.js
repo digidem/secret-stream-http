@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { fetch, setGlobalDispatcher } from 'secret-stream-http'
+import { fetch, setGlobalDispatcher, Agent } from 'secret-stream-http'
 
-import { Agent } from '../src/agent.js'
 import { createTestServer, listen } from './helpers.js'
 
 test('can fetch from a secret-stream server', async (t) => {
