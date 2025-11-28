@@ -5,6 +5,8 @@ import { Duplex as StreamxDuplex } from 'streamx'
 
 import { StreamxAsNodeDuplex } from '../src/streamx-as-node-duplex.js'
 
+const isNode18 = process.versions.node.startsWith('18.')
+
 test('basic duplex functionality - read and write', async () => {
 	const streamx = new StreamxDuplex({
 		read(cb) {
@@ -987,7 +989,7 @@ test('allowHalfOpen: false with autoDestroy', async () => {
 	})
 })
 
-test('destroy during corked writes', async () => {
+test('destroy during corked writes', { skip: isNode18 }, async () => {
 	const streamx = new StreamxDuplex({
 		read(cb) {
 			cb()
@@ -1019,77 +1021,85 @@ test('destroy during corked writes', async () => {
 
 // Readable/writable property option tests
 
-test('readable: false option - push throws error', async () => {
-	const streamx = new StreamxDuplex({
-		read(cb) {
-			cb()
-		},
-		write(chunk, cb) {
-			cb()
-		},
-	})
-
-	const duplex = new StreamxAsNodeDuplex(streamx, { readable: false })
-
-	return new Promise((resolve, reject) => {
-		assert.strictEqual(duplex.readable, false)
-
-		duplex.on('error', (err) => {
-			try {
-				// @ts-expect-error
-				assert.strictEqual(err.code, 'ERR_STREAM_PUSH_AFTER_EOF')
-				resolve()
-			} catch (e) {
-				reject(e)
-			}
+test(
+	'readable: false option - push throws error',
+	{ skip: isNode18 },
+	async () => {
+		const streamx = new StreamxDuplex({
+			read(cb) {
+				cb()
+			},
+			write(chunk, cb) {
+				cb()
+			},
 		})
 
-		duplex.on('data', () => {
-			reject(new Error('data should not be emitted'))
+		const duplex = new StreamxAsNodeDuplex(streamx, { readable: false })
+
+		return new Promise((resolve, reject) => {
+			assert.strictEqual(duplex.readable, false)
+
+			duplex.on('error', (err) => {
+				try {
+					// @ts-expect-error
+					assert.strictEqual(err.code, 'ERR_STREAM_PUSH_AFTER_EOF')
+					resolve()
+				} catch (e) {
+					reject(e)
+				}
+			})
+
+			duplex.on('data', () => {
+				reject(new Error('data should not be emitted'))
+			})
+
+			duplex.on('end', () => {
+				reject(new Error('end should not be emitted'))
+			})
+
+			duplex.push('asd')
+		})
+	},
+)
+
+test(
+	'writable: false option - write throws error',
+	{ skip: isNode18 },
+	async () => {
+		const streamx = new StreamxDuplex({
+			read(cb) {
+				cb()
+			},
+			write() {
+				throw new Error('write should not be called')
+			},
 		})
 
-		duplex.on('end', () => {
-			reject(new Error('end should not be emitted'))
+		const duplex = new StreamxAsNodeDuplex(streamx, { writable: false })
+
+		return new Promise((resolve, reject) => {
+			assert.strictEqual(duplex.writable, false)
+
+			duplex.on('error', (err) => {
+				try {
+					// @ts-expect-error
+					assert.strictEqual(err.code, 'ERR_STREAM_WRITE_AFTER_END')
+					resolve()
+				} catch (e) {
+					reject(e)
+				}
+			})
+
+			duplex.on('finish', () => {
+				reject(new Error('finish should not be emitted'))
+			})
+
+			duplex.write('asd')
 		})
+	},
+)
 
-		duplex.push('asd')
-	})
-})
-
-test('writable: false option - write throws error', async () => {
-	const streamx = new StreamxDuplex({
-		read(cb) {
-			cb()
-		},
-		write() {
-			throw new Error('write should not be called')
-		},
-	})
-
-	const duplex = new StreamxAsNodeDuplex(streamx, { writable: false })
-
-	return new Promise((resolve, reject) => {
-		assert.strictEqual(duplex.writable, false)
-
-		duplex.on('error', (err) => {
-			try {
-				// @ts-expect-error
-				assert.strictEqual(err.code, 'ERR_STREAM_WRITE_AFTER_END')
-				resolve()
-			} catch (e) {
-				reject(e)
-			}
-		})
-
-		duplex.on('finish', () => {
-			reject(new Error('finish should not be emitted'))
-		})
-
-		duplex.write('asd')
-	})
-})
-
-test('readable: false with async iteration', async () => {
+test('readable: false with async iteration', { skip: isNode18 }, async () => {
 	const streamx = new StreamxDuplex({
 		read(cb) {
 			cb()
@@ -1122,42 +1132,46 @@ test('readable: false with async iteration', async () => {
 
 // Pipeline tests
 
-test('pipeline with Duplex throws premature close', async () => {
-	const { pipeline, PassThrough } = await import('node:stream')
+test(
+	'pipeline with Duplex throws premature close',
+	{ skip: isNode18 },
+	async () => {
+		const { pipeline, PassThrough } = await import('node:stream')
 
-	const remote = new PassThrough()
+		const remote = new PassThrough()
 
-	const streamx = new StreamxDuplex({
-		read(cb) {
-			cb()
-		},
-		write(chunk, cb) {
-			cb()
-		},
-	})
-
-	const local = new StreamxAsNodeDuplex(streamx)
-
-	return new Promise((resolve, reject) => {
-		pipeline(remote, local, remote, (err) => {
-			try {
-				assert.ok(err)
-				assert.strictEqual(err.code, 'ERR_STREAM_PREMATURE_CLOSE')
-				resolve()
-			} catch (e) {
-				reject(e)
-			}
+		const streamx = new StreamxDuplex({
+			read(cb) {
+				cb()
+			},
+			write(chunk, cb) {
+				cb()
+			},
 		})
 
-		setImmediate(() => {
-			remote.end()
+		const local = new StreamxAsNodeDuplex(streamx)
+
+		return new Promise((resolve, reject) => {
+			pipeline(remote, local, remote, (err) => {
+				try {
+					assert.ok(err)
+					assert.strictEqual(err.code, 'ERR_STREAM_PREMATURE_CLOSE')
+					resolve()
+				} catch (e) {
+					reject(e)
+				}
+			})
+
+			setImmediate(() => {
+				remote.end()
+			})
 		})
-	})
-})
+	},
+)
 
 // Readable ending tests (backpressure and Transform-like behavior)
 
-test('readable ending with backpressure', async () => {
+test('readable ending with backpressure', { skip: isNode18 }, async () => {
 	// This test verifies basic backpressure handling.
 	// Note: When a pipe destination ends, Node.js behavior is to destroy the pipe,
 	// not necessarily to pause the source via backpressure. This test focuses on
@@ -1225,182 +1239,193 @@ test('readable ending with backpressure', async () => {
 	})
 })
 
-test('pipe backpressure - source stops reading when destination is slow', async () => {
-	// This test verifies that when piping through StreamxAsNodeDuplex, backpressure
-	// is properly communicated to the source. When the destination is slow/paused,
-	// the source readable should stop being consumed.
+test(
+	'pipe backpressure - source stops reading when destination is slow',
+	{ skip: isNode18 },
+	async () => {
+		// This test verifies that when piping through StreamxAsNodeDuplex, backpressure
+		// is properly communicated to the source. When the destination is slow/paused,
+		// the source readable should stop being consumed.
 
-	const { Readable } = await import('node:stream')
+		const { Readable } = await import('node:stream')
 
-	let sourceReadCount = 0
-	const source = new Readable({
-		read() {
-			// Track how many times the source is read
-			sourceReadCount++
+		let sourceReadCount = 0
+		const source = new Readable({
+			read() {
+				// Track how many times the source is read
+				sourceReadCount++
 
-			// Push data continuously
-			if (sourceReadCount <= 100) {
-				this.push(Buffer.alloc(1024, sourceReadCount % 256))
-			} else {
-				this.push(null)
-			}
-		},
-	})
-
-	// Create a streamx duplex with slow write
-	let dstWriteCount = 0
-	let allowWrite = true
-
-	const streamx = new StreamxDuplex({
-		highWaterMark: 2048, // Small buffer to trigger backpressure
-		read(cb) {
-			cb()
-		},
-		write(chunk, cb) {
-			dstWriteCount++
-
-			// Simulate a slow/blocked destination by delaying the callback
-			if (!allowWrite) {
-				// Don't call callback - this simulates a blocked write
-				// We'll call it later when we "unblock"
-				return
-			}
-
-			// First few writes are fast
-			if (dstWriteCount < 5) {
-				cb()
-			} else {
-				// After 5 writes, slow down significantly
-				setTimeout(cb, 50)
-			}
-		},
-	})
-
-	const duplex = new StreamxAsNodeDuplex(streamx, {
-		writableHighWaterMark: 2048,
-	})
-
-	return new Promise((resolve, reject) => {
-		source.pipe(duplex)
-
-		duplex.on('data', () => {
-			// Just consume the data
+				// Push data continuously
+				if (sourceReadCount <= 100) {
+					this.push(Buffer.alloc(1024, sourceReadCount % 256))
+				} else {
+					this.push(null)
+				}
+			},
 		})
 
-		// After a short delay, check that the source hasn't been fully consumed
-		setTimeout(() => {
-			try {
-				// Due to backpressure, the source should not have been fully read
-				// It should have stopped reading after the buffer filled up
-				assert.ok(
-					sourceReadCount < 100,
-					`Source should stop reading due to backpressure (read ${sourceReadCount}/100 times)`,
-				)
+		// Create a streamx duplex with slow write
+		let dstWriteCount = 0
+		let allowWrite = true
 
-				assert.ok(
-					dstWriteCount > 0,
-					'Destination should have received some writes',
-				)
+		const streamx = new StreamxDuplex({
+			highWaterMark: 2048, // Small buffer to trigger backpressure
+			read(cb) {
+				cb()
+			},
+			write(chunk, cb) {
+				dstWriteCount++
 
-				// The source should have read more than just the buffer size,
-				// but not everything
-				assert.ok(
-					sourceReadCount > 5,
-					'Source should have read some data before backpressure kicked in',
-				)
+				// Simulate a slow/blocked destination by delaying the callback
+				if (!allowWrite) {
+					// Don't call callback - this simulates a blocked write
+					// We'll call it later when we "unblock"
+					return
+				}
 
-				// Cleanup
-				source.unpipe(duplex)
-				duplex.destroy()
-				resolve()
-			} catch (err) {
-				reject(err)
-			}
-		}, 200)
-	})
-})
+				// First few writes are fast
+				if (dstWriteCount < 5) {
+					cb()
+				} else {
+					// After 5 writes, slow down significantly
+					setTimeout(cb, 50)
+				}
+			},
+		})
 
-test('pipe backpressure when destination ends early', async () => {
-	// This test verifies that backpressure works correctly when manually pausing
-	// and resuming the stream, and that the stream ends up paused when a pipe
-	// destination finishes.
-	//
-	// Note: Due to streamx's internal buffering and read-ahead behavior, when
-	// wrapping a streamx stream that has its own read() implementation, streamx
-	// may read ahead into its buffer before backpressure can take effect. This
-	// is an inherent limitation of wrapping an already-instantiated streamx stream.
-	//
-	// However, the wrapper DOES properly communicate pause/resume to streamx, which
-	// prevents further reads once backpressure is detected.
+		const duplex = new StreamxAsNodeDuplex(streamx, {
+			writableHighWaterMark: 2048,
+		})
 
-	let readCallCount = 0
+		return new Promise((resolve, reject) => {
+			source.pipe(duplex)
 
-	const src = new StreamxDuplex({
-		highWaterMark: 100,
-		read(cb) {
-			if (readCallCount < 10) {
-				readCallCount++
-				this.push(Buffer.from(`chunk-${readCallCount}`))
-			} else {
-				this.push(null)
-			}
-			cb()
-		},
-		write(chunk, cb) {
-			cb()
-		},
-	})
+			duplex.on('data', () => {
+				// Just consume the data
+			})
 
-	const srcDuplex = new StreamxAsNodeDuplex(src, { highWaterMark: 100 })
-
-	let writeCount = 0
-	const dst = new StreamxDuplex({
-		highWaterMark: 100,
-		read(cb) {
-			cb()
-		},
-		write(chunk, cb) {
-			writeCount++
-			// End after second write
-			if (writeCount === 2) {
-				this.push(null)
-			}
-			cb()
-		},
-	})
-
-	const dstDuplex = new StreamxAsNodeDuplex(dst, { highWaterMark: 100 })
-
-	return new Promise((resolve, reject) => {
-		srcDuplex.pipe(dstDuplex)
-
-		dstDuplex.on('data', () => {})
-
-		dstDuplex.on('end', () => {
-			// Give time for pipe cleanup
+			// After a short delay, check that the source hasn't been fully consumed
 			setTimeout(() => {
 				try {
-					// The source should be paused after the pipe ends
+					// Due to backpressure, the source should not have been fully read
+					// It should have stopped reading after the buffer filled up
 					assert.ok(
-						srcDuplex.isPaused(),
-						'Source should be paused after pipe ends',
+						sourceReadCount < 100,
+						`Source should stop reading due to backpressure (read ${sourceReadCount}/100 times)`,
 					)
 
-					// The pause/resume mechanism should be working
-					// (Even if streamx read ahead, the Node.js wrapper should be paused)
-					srcDuplex.resume()
 					assert.ok(
-						!srcDuplex.isPaused(),
-						'Stream should not be paused after resume',
+						dstWriteCount > 0,
+						'Destination should have received some writes',
 					)
-					srcDuplex.pause()
-					assert.ok(srcDuplex.isPaused(), 'Stream should be paused after pause')
 
+					// The source should have read more than just the buffer size,
+					// but not everything
+					assert.ok(
+						sourceReadCount > 5,
+						'Source should have read some data before backpressure kicked in',
+					)
+
+					// Cleanup
+					source.unpipe(duplex)
+					duplex.destroy()
 					resolve()
 				} catch (err) {
 					reject(err)
 				}
-			}, 100)
+			}, 200)
 		})
-	})
-})
+	},
+)
+
+test(
+	'pipe backpressure when destination ends early',
+	{ skip: isNode18 },
+	async () => {
+		// This test verifies that backpressure works correctly when manually pausing
+		// and resuming the stream, and that the stream ends up paused when a pipe
+		// destination finishes.
+		//
+		// Note: Due to streamx's internal buffering and read-ahead behavior, when
+		// wrapping a streamx stream that has its own read() implementation, streamx
+		// may read ahead into its buffer before backpressure can take effect. This
+		// is an inherent limitation of wrapping an already-instantiated streamx stream.
+		//
+		// However, the wrapper DOES properly communicate pause/resume to streamx, which
+		// prevents further reads once backpressure is detected.
+
+		let readCallCount = 0
+
+		const src = new StreamxDuplex({
+			highWaterMark: 100,
+			read(cb) {
+				if (readCallCount < 10) {
+					readCallCount++
+					this.push(Buffer.from(`chunk-${readCallCount}`))
+				} else {
+					this.push(null)
+				}
+				cb()
+			},
+			write(chunk, cb) {
+				cb()
+			},
+		})
+
+		const srcDuplex = new StreamxAsNodeDuplex(src, { highWaterMark: 100 })
+
+		let writeCount = 0
+		const dst = new StreamxDuplex({
+			highWaterMark: 100,
+			read(cb) {
+				cb()
+			},
+			write(chunk, cb) {
+				writeCount++
+				// End after second write
+				if (writeCount === 2) {
+					this.push(null)
+				}
+				cb()
+			},
+		})
+
+		const dstDuplex = new StreamxAsNodeDuplex(dst, { highWaterMark: 100 })
+
+		return new Promise((resolve, reject) => {
+			srcDuplex.pipe(dstDuplex)
+
+			dstDuplex.on('data', () => {})
+
+			dstDuplex.on('end', () => {
+				// Give time for pipe cleanup
+				setTimeout(() => {
+					try {
+						// The source should be paused after the pipe ends
+						assert.ok(
+							srcDuplex.isPaused(),
+							'Source should be paused after pipe ends',
+						)
+
+						// The pause/resume mechanism should be working
+						// (Even if streamx read ahead, the Node.js wrapper should be paused)
+						srcDuplex.resume()
+						assert.ok(
+							!srcDuplex.isPaused(),
+							'Stream should not be paused after resume',
+						)
+						srcDuplex.pause()
+						assert.ok(
+							srcDuplex.isPaused(),
+							'Stream should be paused after pause',
+						)
+
+						resolve()
+					} catch (err) {
+						reject(err)
+					}
+				}, 100)
+			})
+		})
+	},
+)

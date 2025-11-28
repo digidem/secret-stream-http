@@ -58,7 +58,16 @@ export class Agent extends UndiciAgent {
 				keyPair: this.#keyPair,
 			})
 			const secretSocket = new SecretStreamSocket(secretStream)
-			secretStream.once('open', () => {
+
+			/** @param {Error} err */
+			const onError = (err) => {
+				console.error(err)
+				secretStream.removeListener('open', onOpen)
+				callback(err, null)
+			}
+
+			const onOpen = () => {
+				secretStream.removeListener('error', onError)
 				if (!secretStream.remotePublicKey) {
 					secretStream.destroy()
 					callback(new Error('Remote public key is missing'), null)
@@ -75,7 +84,10 @@ export class Agent extends UndiciAgent {
 					// @ts-expect-error - not a socket, but close enough
 					callback(null, secretSocket)
 				}
-			})
+			}
+
+			secretStream.once('error', onError)
+			secretStream.once('open', onOpen)
 		})
 	}
 }
