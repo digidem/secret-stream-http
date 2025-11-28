@@ -36,7 +36,7 @@ test('check req.socket has expected properties', async (t) => {
 	})
 
 	const port = await listen(secretStreamServer)
-	const response = await fetch(`http://localhost:${port}/check`)
+	const response = await fetch(`http://127.0.0.1:${port}/check`)
 	assert.equal(response.status, 200, 'Response status is 200')
 	/** @type {any} */
 	const data = await response.json()
