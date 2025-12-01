@@ -70,6 +70,7 @@ export class Agent extends UndiciAgent {
 				secretStream.removeListener('error', onError)
 				socket.removeListener('error', onError)
 				secretSocket.removeListener('error', onError)
+				socket.removeListener('close', onError)
 				if (!secretStream.remotePublicKey) {
 					secretStream.destroy()
 					callback(new Error('Remote public key is missing'), null)
@@ -90,7 +91,9 @@ export class Agent extends UndiciAgent {
 
 			secretStream.once('error', onError)
 			socket.once('error', onError)
-			secretSocket.on('error', onError)
+			secretSocket.once('error', onError)
+			// If we close before open or error, treat as error
+			socket.once('close', onError)
 			secretStream.once('open', onOpen)
 		})
 	}
