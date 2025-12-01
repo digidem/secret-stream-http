@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { createServer as createTcpServer } from 'node:net'
 import test from 'node:test'
+import { setTimeout } from 'node:timers/promises'
 
 import { fetch, setGlobalDispatcher, Agent } from 'secret-stream-http'
 
@@ -40,8 +41,9 @@ test('parallel fetches work correctly', async (t) => {
 	const server = await createTestServer(t, [
 		[
 			'/parallel',
-			(req) => {
+			async (req) => {
 				const url = new URL(req.url)
+				await setTimeout(100) // delay to ensure parallelism
 				const id = url.searchParams.get('id')
 				if (!id) {
 					throw new Error('Missing id parameter')
