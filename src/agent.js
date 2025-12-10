@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { connect } from 'node:net'
 
 import SecretStream from '@hyperswarm/secret-stream'
@@ -7,19 +8,22 @@ import { SecretStreamSocket } from './secret-stream-socket.js'
 
 /**
  * @typedef {object} KeyPair
- * @property {Buffer} publicKey
- * @property {Buffer} secretKey
+ * @property {Uint8Array} publicKey
+ * @property {Uint8Array} secretKey
  */
 
 /**
- * @typedef {Omit<UndiciAgent.Options, 'connect'> & { keyPair?: KeyPair, remotePublicKey?: Buffer }} SecretStreamAgentOptions
+ * @typedef {Omit<UndiciAgent.Options, 'connect'> & { keyPair?: KeyPair, remotePublicKey?: Uint8Array }} SecretStreamAgentOptions
  */
 
 export class Agent extends UndiciAgent {
 	#keyPair
 	#remotePublicKey
 
-	static keyPair = SecretStream.keyPair
+	static keyPair =
+		/** @type {(seed?: Buffer | Uint8Array | undefined) => KeyPair} */ (
+			SecretStream.keyPair
+		)
 
 	/**
 	 * @param {SecretStreamAgentOptions} [options]
@@ -42,6 +46,7 @@ export class Agent extends UndiciAgent {
 		const callback = callbackOnce(cb)
 		const socket = connect({ host: hostname, port: port ? +port : 80 }, () => {
 			const secretStream = new SecretStream(true, socket, {
+				// @ts-expect-error - SecretStream types are incorrect - it also accepts Uint8Array
 				keyPair: this.#keyPair,
 			})
 			const secretSocket = new SecretStreamSocket(secretStream)
@@ -67,7 +72,10 @@ export class Agent extends UndiciAgent {
 					callback(new Error('Remote public key is missing'), null)
 				} else if (
 					this.#remotePublicKey &&
-					!this.#remotePublicKey.equals(secretStream.remotePublicKey)
+					!crypto.timingSafeEqual(
+						this.#remotePublicKey,
+						secretStream.remotePublicKey,
+					)
 				) {
 					secretStream.destroy()
 					callback(

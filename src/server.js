@@ -19,7 +19,10 @@ export function createServer(
 ) {
 	const server = createTcpServer()
 	server.on('connection', (socket) => {
-		const secretStream = new SecretStream(false, socket, { keyPair })
+		const secretStream = new SecretStream(false, socket, {
+			// @ts-expect-error - the SecretStream types are incorrect
+			keyPair,
+		})
 		const secretSocket = new SecretStreamSocket(secretStream)
 		httpServer.emit('connection', secretSocket)
 	})

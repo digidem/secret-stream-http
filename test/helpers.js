@@ -12,8 +12,10 @@ import { createServer } from '../src/server.js'
 /**
  * @param {import('node:test').TestContext} t
  * @param {[string, NodeRequestHandler, ...NodeRequestHandler[]][]} routes
+ * @param {object} [options]
+ * @param {import("../src/agent.js").KeyPair} [options.keyPair]
  */
-export async function createTestServer(t, routes) {
+export async function createTestServer(t, routes, { keyPair } = {}) {
 	const router = AutoRouter()
 	const sockets = new Set()
 
@@ -27,7 +29,9 @@ export async function createTestServer(t, routes) {
 		},
 		createServerAdapter(router.fetch),
 	)
-	const secretStreamServer = createServer(httpServer)
+	const secretStreamServer = createServer(httpServer, {
+		keyPair,
+	})
 
 	secretStreamServer.on('connection', (socket) => {
 		sockets.add(socket)

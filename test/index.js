@@ -168,6 +168,48 @@ test('can pass a remotePublicKey to the agent to verify server identity', async 
 	)
 })
 
+test('Keys can be Uint8Arrays', async (t) => {
+	const keyPair = Agent.keyPair()
+	const keyPairAsUint8 = {
+		publicKey: new Uint8Array(keyPair.publicKey),
+		secretKey: new Uint8Array(keyPair.secretKey),
+	}
+	const server = await createTestServer(
+		t,
+		[['/identity', () => new Response('Verified')]],
+		{ keyPair: keyPairAsUint8 },
+	)
+
+	const otherServer = await createTestServer(t, [
+		['/identity', () => new Response('Verified')],
+	])
+
+	const port1 = await listen(server)
+	const port2 = await listen(otherServer)
+
+	const agent = new Agent({
+		remotePublicKey: keyPairAsUint8.publicKey,
+	})
+
+	const response = await fetch(`http://127.0.0.1:${port1}/identity`, {
+		dispatcher: agent,
+	})
+	assert.equal(response.status, 200)
+	assert.equal(await response.text(), 'Verified')
+	// Now try to connect to the other server with a different public key
+	await assert.rejects(
+		async () => {
+			await fetch(`http://127.0.0.1:${port2}/identity`, {
+				dispatcher: agent,
+			})
+		},
+		(err) =>
+			// @ts-expect-error
+			err.cause.message === 'Remote public key does not match expected key',
+		'Should reject connection to server with unexpected public key',
+	)
+})
+
 test('can set a custom global dispatcher with a custom keyPair', async (t) => {
 	const keyPair = Agent.keyPair()
 	const agent = new Agent({ keyPair })
