@@ -5,6 +5,7 @@ import test from 'node:test'
 import { setTimeout } from 'node:timers/promises'
 
 import { fetch, setGlobalDispatcher, Agent } from 'secret-stream-http'
+import { uint8ArrayToHex } from 'uint8array-extras'
 
 import { createTestServer, listen } from './helpers.js'
 
@@ -128,7 +129,7 @@ test('can pass a custom agent per-fetch with custom keyPair', async (t) => {
 
 	assert.deepEqual(
 		clientPublicKeys,
-		[keyPair1.publicKey.toString('hex'), keyPair2.publicKey.toString('hex')],
+		[uint8ArrayToHex(keyPair1.publicKey), uint8ArrayToHex(keyPair2.publicKey)],
 		'Each fetch should use the correct client public key from its agent',
 	)
 })
@@ -239,7 +240,7 @@ test('can set a custom global dispatcher with a custom keyPair', async (t) => {
 		'All requests should use the same client public key from the global agent',
 	)
 	assert.equal(
-		clientPublicKeys.has(keyPair.publicKey.toString('hex')),
+		clientPublicKeys.has(uint8ArrayToHex(keyPair.publicKey)),
 		true,
 		"Client public key should match the custom keyPair's public key",
 	)
