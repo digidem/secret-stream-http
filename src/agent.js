@@ -15,8 +15,6 @@ import { SecretStreamSocket } from './secret-stream-socket.js'
  * @typedef {Omit<UndiciAgent.Options, 'connect'> & { keyPair?: KeyPair, remotePublicKey?: Buffer }} SecretStreamAgentOptions
  */
 
-const kSecretStreamAgent = Symbol.for('secret-stream-agent')
-
 export class Agent extends UndiciAgent {
 	#keyPair
 	#remotePublicKey
@@ -39,18 +37,6 @@ export class Agent extends UndiciAgent {
 		this.#remotePublicKey = remotePublicKey
 	}
 
-	/**
-	 * @param {any} instance
-	 * @override
-	 */
-	static [Symbol.hasInstance](instance) {
-		return instance && instance[kSecretStreamAgent] === true
-	}
-
-	[kSecretStreamAgent]() {
-		return true
-	}
-
 	/** @type {import('undici').buildConnector.connector} */
 	#connect({ hostname, port }, cb) {
 		const callback = callbackOnce(cb)
@@ -66,11 +52,16 @@ export class Agent extends UndiciAgent {
 				callback(err, null)
 			}
 
+			const onClose = () => {
+				secretStream.removeListener('open', onOpen)
+				callback(new Error('Socket closed before handshake completed'), null)
+			}
+
 			const onOpen = () => {
 				secretStream.removeListener('error', onError)
 				socket.removeListener('error', onError)
 				secretSocket.removeListener('error', onError)
-				socket.removeListener('close', onError)
+				socket.removeListener('close', onClose)
 				if (!secretStream.remotePublicKey) {
 					secretStream.destroy()
 					callback(new Error('Remote public key is missing'), null)
@@ -93,7 +84,7 @@ export class Agent extends UndiciAgent {
 			socket.once('error', onError)
 			secretSocket.once('error', onError)
 			// If we close before open or error, treat as error
-			socket.once('close', onError)
+			socket.once('close', onClose)
 			secretStream.once('open', onOpen)
 		})
 	}
