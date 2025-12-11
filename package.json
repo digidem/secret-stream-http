@@ -25,6 +25,7 @@
 		"format": "prettier --write .",
 		"lint": "eslint",
 		"prepare": "husky",
+		"types": "tsc",
 		"prepack": "tsc -p tsconfig.npm.json"
 	},
 	"keywords": [],
@@ -62,7 +63,8 @@
 		"itty-router": "^5.0.22",
 		"lint-staged": "^16.2.7",
 		"prettier": "^3.7.1",
-		"typescript": "^5.9.2"
+		"typescript": "^5.9.2",
+		"uint8array-extras": "^1.5.0"
 	},
 	"prettier": {
 		"semi": false,
