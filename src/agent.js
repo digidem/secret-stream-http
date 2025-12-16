@@ -51,6 +51,9 @@ export class Agent extends UndiciAgent {
 			})
 			const secretSocket = new SecretStreamSocket(secretStream)
 
+			// Remove the early socket error handler now that we're connected
+			socket.removeListener('error', onConnectionError)
+
 			/** @param {Error} err */
 			const onError = (err) => {
 				secretStream.removeListener('open', onOpen)
@@ -95,6 +98,13 @@ export class Agent extends UndiciAgent {
 			socket.once('close', onClose)
 			secretStream.once('open', onOpen)
 		})
+
+		// Attach error handler immediately to catch connection errors like ECONNREFUSED
+		/** @param {Error} err */
+		const onConnectionError = (err) => {
+			callback(err, null)
+		}
+		socket.once('error', onConnectionError)
 	}
 }
 
