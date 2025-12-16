@@ -259,3 +259,19 @@ test('throws on disconnect during handshake', async () => {
 	server.close()
 	await once(server, 'close')
 })
+
+test('handles ECONNREFUSED gracefully when no server is listening', async () => {
+	// Use a port that's very unlikely to have a server running
+	const unusedPort = 59999
+
+	await assert.rejects(
+		async () => {
+			await fetch(`http://127.0.0.1:${unusedPort}/`)
+		},
+		(err) => {
+			// @ts-expect-error
+			return err.code === 'ECONNREFUSED' || err.cause?.code === 'ECONNREFUSED'
+		},
+		'Should reject with ECONNREFUSED when connecting to a port with no server',
+	)
+})
